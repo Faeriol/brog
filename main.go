@@ -5,6 +5,7 @@ import (
 	"github.com/aybabtme/brog/brogger"
 	"github.com/aybabtme/color/brush"
 	"os"
+	"os/signal"
 	"strings"
 )
 
@@ -102,7 +103,7 @@ func doInit() {
 		return
 	}
 
-	brog, err := brogger.PrepareBrog(false)
+	brog, err := brogger.PrepareBrog()
 	if len(errs) != 0 {
 		printPreBrogError("Couldn't prepare brog structure.\n")
 		printPreBrogError("Message : %v.\n", err)
@@ -116,7 +117,7 @@ func doInit() {
 
 func doServer(isProd bool) {
 
-	brog, err := brogger.PrepareBrog(isProd)
+	brog, err := brogger.PrepareBrog()
 	if err != nil {
 		printPreBrogError("Couldn't start brog server.\n")
 		printPreBrogError("Message : %v.\n", err)
@@ -124,14 +125,15 @@ func doServer(isProd bool) {
 		return
 	}
 	defer closeOrPanic(brog)
+	sigCatch(brog)
 
-	err = brog.ListenAndServe()
+	err = brog.ListenAndServe(isProd)
 	brog.Err("Whoops! %v.", err)
 
 }
 
 func doCreate(newPostFilename string, creationType string) {
-	brog, err := brogger.PrepareBrog(false)
+	brog, err := brogger.PrepareBrog()
 	if err != nil {
 		printPreBrogError("Couldn't create new post.\n")
 		printPreBrogError("Message : %v.\n", err)
@@ -160,6 +162,19 @@ func printPreBrogError(format string, args ...interface{}) {
 
 func printTryInitMessage() {
 	fmt.Printf("Try initializing a brog here, run : brog %s.\n", Init)
+}
+
+// Make sure we are going to catch interupts
+func sigCatch(brog *brogger.Brog) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
+		brog.Ok("Brog invasion INTERRUPTed")
+		closeOrPanic(brog)
+
+		os.Exit(1)
+	}()
 }
 
 func closeOrPanic(brog *brogger.Brog) {

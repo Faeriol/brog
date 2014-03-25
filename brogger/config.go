@@ -27,7 +27,7 @@ var (
 	DefaultPagePath         = "pages" + string(os.PathSeparator)
 	DefaultAssetPath        = "assets" + string(os.PathSeparator)
 	DefaultPostFileExt      = ".md"
-	DefaultPidFilename      = "brog.pid"
+	DefaultPidFilename      = ""
 	DefaultLogFilename      = "brog.log"
 	DefaultLogVerbosity     = "watch"
 	DefaultConsoleVerbosity = "watch"
@@ -86,7 +86,7 @@ func (cfg *Config) selfValidate() error {
 	if err == nil && (portnum < 1 || portnum > 1<<16) {
 		return fmt.Errorf("invalid port range (%d)", portnum)
 	}
-	portnum, err = strconv.ParseInt(cfg.DevelPort, 10, 64)
+	portnum, err = strconv.ParseInt(cfg.DevelPort, 10, 0)
 	if err == nil && (portnum < 1 || portnum > 1<<16) {
 		return fmt.Errorf("invalid port range (%d)", portnum)
 	}

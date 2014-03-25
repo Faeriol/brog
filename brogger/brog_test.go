@@ -14,7 +14,6 @@ func SetUpDefaultBrog() *Brog {
 	b := &Brog{
 		logMux: logmux,
 		Config: config,
-		isProd: false,
 	}
 	return b
 }

@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"path"
 	"runtime"
 	"strconv"
@@ -20,9 +19,7 @@ import (
 // brog posts and watches for changes in posts and templates.
 type Brog struct {
 	*logMux
-	isProd      bool
 	Config      *Config
-	Pid         int
 	netList     net.Listener
 	tmplMngr    *templateManager
 	postMngr    *postManager
@@ -48,7 +45,7 @@ type appContent struct {
 // config file.
 // If anything goes wrong during that process, it will return an error
 // explaining where it happened.
-func PrepareBrog(isProd bool) (*Brog, error) {
+func PrepareBrog() (*Brog, error) {
 	config, err := loadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("preparing brog's configuration, %v", err)
@@ -62,13 +59,9 @@ func PrepareBrog(isProd bool) (*Brog, error) {
 	brog := &Brog{
 		logMux: logMux,
 		Config: config,
-		isProd: isProd,
-		Pid:    os.Getpid(),
 	}
 
-	brog.sigCatch()
-
-	if isProd {
+	if brog.Config.PidFilename != "." {
 		if err := brog.writePID(); err != nil {
 			panic(err)
 		}
@@ -106,7 +99,7 @@ func (b *Brog) Close() error {
 		return fmt.Errorf("caught errors while closing, %v", errs)
 	}
 
-	if b.isProd {
+	if b.Config.PidFilename != "." {
 		err := os.Remove(b.Config.PidFilename)
 		if err != nil {
 			return fmt.Errorf("deleting pidfile '%s', %v", b.Config.PidFilename, err)
@@ -123,12 +116,12 @@ func (b *Brog) Close() error {
 // ListenAndServe starts watching the path specified in `ConfigFilename`
 // for changes and starts serving brog's content, again according to the
 // settings in `ConfigFilename`.
-func (b *Brog) ListenAndServe() error {
+func (b *Brog) ListenAndServe(isProd bool) error {
 
 	runtime.GOMAXPROCS(b.Config.MaxCPUs)
 
 	var sock string
-	if b.isProd {
+	if isProd {
 		sock = b.Config.ProdPort
 	} else {
 		sock = b.Config.DevelPort
@@ -165,7 +158,7 @@ func (b *Brog) ListenAndServe() error {
 	http.Handle("/assets/", http.StripPrefix("/assets/", b.logHandler(b.gzipHandler(fileServer))))
 
 	b.Ok("Assimilation completed.")
-	if b.isProd {
+	if isProd {
 		b.Warn("Going live in production.")
 	}
 
@@ -212,29 +205,15 @@ func (b *Brog) startWatchers() error {
 
 // write PID because sysadmin
 func (b *Brog) writePID() error {
-	b.Ok("Galactic coordinates: %d,%02d", b.Pid/100, b.Pid%100)
+	pid := os.Getpid()
+	b.Ok("Galactic coordinates: %d,%02d", pid/100, pid%100)
 
-	pidBytes := []byte(strconv.Itoa(b.Pid))
+	pidBytes := []byte(strconv.Itoa(pid))
 	if err := ioutil.WriteFile(b.Config.PidFilename, pidBytes, 0755); err != nil {
 		return fmt.Errorf("writing to PID file '%s', %v", b.Config.PidFilename, err)
 	}
 
 	return nil
-}
-
-// Make sure we are going to catch interupts
-func (b *Brog) sigCatch() {
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		<-c
-		b.Ok("Brog invasion INTERRUPTed")
-
-		if err := b.Close(); err != nil {
-			b.Err("Couldn't close brog cleanly, %v", err)
-		}
-		os.Exit(1)
-	}()
 }
 
 // Logging helpers
