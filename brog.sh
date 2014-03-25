@@ -116,7 +116,7 @@ start() {
   else
     echo "Starting the Brog instance..."
     
-    ./brog server & disown
+    ./brog server prod & disown
   fi
   # Let settle because in some configuration the following will report brog is not running because it's still starting
   sleep 1  

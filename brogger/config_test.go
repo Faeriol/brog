@@ -14,17 +14,17 @@ func TestSelfValidate(t *testing.T) {
 	if err != nil {
 		t.Error("Error validating default conig")
 	}
-	config.Port = "-1"
+	config.ProdPort = "-1"
 	err = config.selfValidate()
 	if err == nil {
 		t.Error("-1 is not a valid production port number")
 	}
-	config.Port = "65600"
+	config.ProdPort = "65600"
 	err = config.selfValidate()
 	if err == nil {
 		t.Error("656000 is not a valid production port number")
 	}
-	config.Port = DefaultPort
+	config.ProdPort = DefaultProdPort
 	config.DevelPort = "-1"
 	err = config.selfValidate()
 	if err == nil {
@@ -52,7 +52,7 @@ func TestSelfValidate(t *testing.T) {
 func TestJsonConfigStruct(t *testing.T) {
 	os.Chdir("base")
 	defer os.Chdir("..")
-	config, _ = loadConfig(false)
+	config, _ = loadConfig()
 	config.persistToFile("test_config.json")
 	defer os.Remove("test_config.json")
 	origfile, _ := os.Open("brog_config.json")

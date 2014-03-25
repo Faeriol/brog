@@ -45,8 +45,8 @@ type appContent struct {
 // config file.
 // If anything goes wrong during that process, it will return an error
 // explaining where it happened.
-func PrepareBrog(isDevel bool) (*Brog, error) {
-	config, err := loadConfig(isDevel)
+func PrepareBrog() (*Brog, error) {
+	config, err := loadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("preparing brog's configuration, %v", err)
 	}
@@ -116,11 +116,17 @@ func (b *Brog) Close() error {
 // ListenAndServe starts watching the path specified in `ConfigFilename`
 // for changes and starts serving brog's content, again according to the
 // settings in `ConfigFilename`.
-func (b *Brog) ListenAndServe() error {
+func (b *Brog) ListenAndServe(isProd bool) error {
 
 	runtime.GOMAXPROCS(b.Config.MaxCPUs)
 
-	port, err := strconv.ParseInt(b.Config.Port, 10, 0)
+	var sock string
+	if isProd {
+		sock = b.Config.ProdPort
+	} else {
+		sock = b.Config.DevelPort
+	}
+	port, err := strconv.ParseInt(sock, 10, 0)
 
 	var addr string
 	if err == nil {
@@ -128,7 +134,7 @@ func (b *Brog) ListenAndServe() error {
 		b.Ok("CAPTAIN: Open channel, %s", addr)
 	} else {
 		addr = ""
-		b.Ok("CAPTAIN: Open channel, unix://%s", b.Config.Port)
+		b.Ok("CAPTAIN: Open channel, unix://%s", sock)
 	}
 
 	b.Warn("ON SCREEN: We are the Brog. Resistance is futile.")
@@ -152,11 +158,14 @@ func (b *Brog) ListenAndServe() error {
 	http.Handle("/assets/", http.StripPrefix("/assets/", b.logHandler(b.gzipHandler(fileServer))))
 
 	b.Ok("Assimilation completed.")
+	if isProd {
+		b.Warn("Going live in production.")
+	}
 
 	if addr != "" {
 		b.netList, err = net.Listen("tcp", addr)
 	} else {
-		b.netList, err = net.Listen("unix", b.Config.Port)
+		b.netList, err = net.Listen("unix", sock)
 	}
 	if err != nil {
 		return err
