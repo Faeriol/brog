@@ -1,5 +1,5 @@
 {
-   "prodPort": "80",
+   "port": "80",
    "develPort": "3000",
    "hostName": "localhost",
    "maxCpus": 8,

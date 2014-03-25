@@ -23,7 +23,7 @@ const (
 	// Version shows the current version of brog
 	Version = "version"
 
-	usage = `usage: brog {init | server [prod] | create [new post name] | page [new page name] | version}
+	usage = `usage: brog {init | server [devel] | create [new post name] | page [new page name] | version}
 
 'brog' is a tool to initialize brog structures, serve the content
 of brog structures and create new posts in a brog structure.
@@ -33,12 +33,12 @@ The following are brog's valid commands with the arguments they take :
     brog init             Takes no argument, creates a new brog struc-
                           ture at the current working directory.
 
-    brog server [prod]    Starts serving the brog structure at the
+    brog server [devel]   Starts serving the brog structure at the
                           current location and watch for changes in the
                           template and post folders specified by the
-                          config file.  If [prod], use the production
+                          config file.  If [devel], use the development
                           port number specified in the config file. By
-                          default, brog runs in development mode.
+                          default, brog runs in production mode.
 
     brog create [name]    Creates a blank post in file [name], in the
                           location specified by the config file.
@@ -68,7 +68,7 @@ func main() {
 			return
 		case Server:
 			if len(commands) > i+1 {
-				doServer(commands[i+1] == "prod")
+				doServer(commands[i+1] == "devel")
 			} else {
 				doServer(false)
 			}
@@ -103,7 +103,7 @@ func doInit() {
 		return
 	}
 
-	brog, err := brogger.PrepareBrog()
+	brog, err := brogger.PrepareBrog(false)
 	if len(errs) != 0 {
 		printPreBrogError("Couldn't prepare brog structure.\n")
 		printPreBrogError("Message : %v.\n", err)
@@ -115,9 +115,9 @@ func doInit() {
 	brog.Ok("Brog nanoprobes implanted.")
 }
 
-func doServer(isProd bool) {
+func doServer(isDevel bool) {
 
-	brog, err := brogger.PrepareBrog()
+	brog, err := brogger.PrepareBrog(isDevel)
 	if err != nil {
 		printPreBrogError("Couldn't start brog server.\n")
 		printPreBrogError("Message : %v.\n", err)
@@ -127,13 +127,17 @@ func doServer(isProd bool) {
 	defer closeOrPanic(brog)
 	sigCatch(brog)
 
-	err = brog.ListenAndServe(isProd)
+	if isDevel {
+		brog.Warn("Will go live in development.")
+	}
+
+	err = brog.ListenAndServe()
 	brog.Err("Whoops! %v.", err)
 
 }
 
 func doCreate(newPostFilename string, creationType string) {
-	brog, err := brogger.PrepareBrog()
+	brog, err := brogger.PrepareBrog(false)
 	if err != nil {
 		printPreBrogError("Couldn't create new post.\n")
 		printPreBrogError("Message : %v.\n", err)

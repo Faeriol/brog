@@ -18,7 +18,7 @@ const (
 
 // Defaults for Brog's configuration.
 var (
-	DefaultProdPort         = "80"
+	DefaultPort             = "80"
 	DefaultDevelPort        = "3000"
 	DefaultHostname         = "localhost"
 	DefaultMaxCPUs          = runtime.NumCPU()
@@ -40,7 +40,7 @@ var (
 // Config contains all the settings that a Brog uses to watch and create
 // and serve posts, log events and execute in general.
 type Config struct {
-	ProdPort         string   `json:"prodPort"`
+	Port             string   `json:"port"`
 	DevelPort        string   `json:"develPort"`
 	Hostname         string   `json:"hostName"`
 	MaxCPUs          int      `json:"maxCpus"`
@@ -61,7 +61,7 @@ type Config struct {
 
 func newDefaultConfig() *Config {
 	return &Config{
-		ProdPort:         DefaultProdPort,
+		Port:             DefaultPort,
 		DevelPort:        DefaultDevelPort,
 		Hostname:         DefaultHostname,
 		MaxCPUs:          DefaultMaxCPUs,
@@ -82,7 +82,7 @@ func newDefaultConfig() *Config {
 }
 
 func (cfg *Config) selfValidate() error {
-	portnum, err := strconv.ParseInt(cfg.ProdPort, 10, 0)
+	portnum, err := strconv.ParseInt(cfg.Port, 10, 0)
 	if err == nil && (portnum < 1 || portnum > 1<<16) {
 		return fmt.Errorf("invalid port range (%d)", portnum)
 	}
@@ -107,11 +107,11 @@ func (cfg *Config) selfValidate() error {
 	return nil
 }
 
-func loadConfig() (*Config, error) {
+func loadConfig(isDevel bool) (*Config, error) {
 	if !fileExists(ConfigFilename) {
 		return nil, fmt.Errorf("there is no brog config file named '%s' here", ConfigFilename)
 	}
-	return loadFromFile()
+	return loadFromFile(isDevel)
 }
 
 func fileExists(filename string) bool {
@@ -121,7 +121,7 @@ func fileExists(filename string) bool {
 	return true
 }
 
-func loadFromFile() (*Config, error) {
+func loadFromFile(isDevel bool) (*Config, error) {
 	configRd, err := os.Open(ConfigFilename)
 	if err != nil {
 		return nil, fmt.Errorf("opening config file '%s', %v", ConfigFilename, err)
@@ -138,6 +138,10 @@ func loadFromFile() (*Config, error) {
 	err = config.selfValidate()
 	if err != nil {
 		return nil, fmt.Errorf("validating config settings, %v", err)
+	}
+
+	if isDevel {
+		config.Port = config.DevelPort
 	}
 
 	if err := configRd.Close(); err != nil {
